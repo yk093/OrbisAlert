@@ -32,7 +32,7 @@
 
 ---
 
-## 🛠 開発者情報
+## 開発者情報
 
 - 開発者: ykun
 - GitHub: [https://github.com/yk093](https://github.com/yk093)
