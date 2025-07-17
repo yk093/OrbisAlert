@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.ykun.orbisalert">
+
+    <!-- バックグラウンドで位置情報を取得するための権限 -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+
+    <!-- 位置情報のアクセス許可（高精度GPSとWi-Fi/モバイルネットワーク） -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
+    <!-- インターネットアクセス（地図タイルやJSONデータのダウンロード用） -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- ネットワーク状態の確認（必要に応じて） -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!-- バイブレーション機能を使用するための権限 -->
+    <uses-permission android:name="android.permission.VIBRATE"/>
+
+    <!-- Android 13 (API 33) 以降で通知を表示するための権限 -->
+    <!-- フォアグラウンドサービス通知などに必要です -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+
+    <!-- Android 13以降で広告IDを使用するための権限 -->
+    <uses-permission android:name="com.google.android.gms.permission.AD_ID" />
+
+    <application
+        android:allowBackup="true"
+        android:label="@string/app_name"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.OrbisAlert">
+
+        <!-- メインアクティビティ（アプリの起動点） -->
+        <activity
+            android:name="com.ykun.orbisalert.MainActivity"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:theme="@style/Theme.OrbisAlert">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- バックグラウンドで位置情報を継続的に取得するためのサービス -->
+        <service
+            android:name="com.ykun.orbisalert.LocationService"
+            android:foregroundServiceType="location" />
+
+        <!-- Google Maps SDKを使用するためのAPIキー -->
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="@string/google_maps_key" />
+
+        <!-- AdMob SDKを使用するためのアプリケーションID -->
+        <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="@string/admob_app_id" />
+    </application>
+</manifest>

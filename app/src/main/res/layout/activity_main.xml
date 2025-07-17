@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- res/layout/activity_main.xml -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <!-- 地図エリア -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <fragment
+            android:id="@+id/map_fragment"
+            android:name="com.google.android.gms.maps.SupportMapFragment"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+        <!-- 現在地ボタン（右下） -->
+        <Button
+            android:id="@+id/btn_my_location"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="現在地"
+            android:layout_gravity="bottom|end"
+            android:layout_margin="6dp"
+            android:backgroundTint="@drawable/button_background" />
+
+        <!-- jsonファイル更新ボタン（右上） -->
+        <Button
+            android:id="@+id/btn_update_json"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="最新データ取得"
+            android:layout_gravity="top|end"
+            android:layout_marginTop="32dp"
+            android:layout_marginRight="6dp"
+            android:backgroundTint="@drawable/button_background" />
+
+        <!-- jsonファイル取得日表示（右上） -->
+        <TextView
+            android:id="@+id/json_last_updated"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="データ更新日: 未更新"
+            android:textColor="#FFFFFF"
+            android:textSize="12sp"
+            android:background="#AA000000"
+            android:padding="6dp"
+            android:layout_gravity="top|end" />
+
+        <!-- 位置情報テキスト（左上） -->
+        <TextView
+            android:id="@+id/location_info"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="位置情報未取得"
+            android:textSize="14sp"
+            android:background="#AA000000"
+            android:textColor="#FFFFFF"
+            android:padding="8dp"
+            android:layout_gravity="top|start" />
+
+        <!-- GPS警告（上中央） -->
+        <TextView
+            android:id="@+id/gps_overlay"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="⚠ GPS不安定"
+            android:textColor="#000000"
+            android:background="#AAFFFF00"
+            android:textSize="16sp"
+            android:padding="8dp"
+            android:visibility="gone"
+            android:layout_gravity="top|center_horizontal"
+            android:layout_marginTop="180dp" />
+
+        <!-- 例: 残距離表示オーバーレイ（上中央） -->
+        <TextView
+            android:id="@+id/distance_overlay"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="残距離表示"
+            android:textColor="#000000"
+            android:background="#AAFF0000"
+            android:textSize="16sp"
+            android:padding="8dp"
+            android:visibility="gone"
+            android:layout_gravity="top|center_horizontal"
+            android:layout_marginTop="180dp" />
+    </FrameLayout>
+
+
+    <!-- 広告を画面下部に表示 -->
+    <LinearLayout
+        android:id="@+id/ad_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="#EEEEEE"
+        android:padding="8dp" />
+
+</LinearLayout>
