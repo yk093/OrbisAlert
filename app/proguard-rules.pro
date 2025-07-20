@@ -1,21 +1,50 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
+########################################
+# Android 標準・Media関連
+########################################
+-dontwarn android.media.LoudnessCodecController$OnLoudnessCodecUpdateListener
+-dontwarn android.media.LoudnessCodecController
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+########################################
+# Google Play Services (AdMob, Maps)
+########################################
+-keep class com.google.android.gms.ads.** { *; }
+-keep class com.google.android.gms.maps.** { *; }
+-keep class com.google.android.gms.common.** { *; }
+-keep class com.google.android.gms.internal.** { *; }
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+########################################
+# Firebase（必要に応じて）
+########################################
+-keep class com.google.firebase.** { *; }
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+########################################
+# JSON / XML / その他
+########################################
+-keep class org.json.** { *; }
+-keepattributes Signature
+-keepattributes *Annotation*
+
+########################################
+# AndroidX ライブラリ
+########################################
+-keep class androidx.lifecycle.** { *; }
+-keep class androidx.core.** { *; }
+-keep class androidx.appcompat.** { *; }
+-keep class androidx.recyclerview.** { *; }
+-keep class androidx.cardview.** { *; }
+
+########################################
+# リフレクションでアクセスされる可能性のあるクラス（例：View Binding）
+########################################
+-keep class * extends android.app.Activity
+-keepclassmembers class * {
+    public <init>(android.content.Context);
+}
+-keepclassmembers class * {
+    @android.webkit.JavascriptInterface <methods>;
+}
+
+########################################
+# アプリ固有のパッケージ
+########################################
+-keep class com.ykun.orbisalert.** { *; }

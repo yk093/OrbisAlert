@@ -28,7 +28,7 @@
 
 不具合の報告・ご意見などは以下のメールアドレスまでご連絡ください：
 
-`orbisalert.app@gmail.com`
+`ykun.utilities@gmail.com`
 
 ---
 

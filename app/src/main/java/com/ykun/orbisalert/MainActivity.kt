@@ -37,7 +37,6 @@ import android.os.Build
 import androidx.core.graphics.scale
 import android.widget.ImageView
 import android.widget.Toast
-import com.google.android.gms.ads.AdError
 
 // AdMob用
 import com.google.android.gms.ads.AdLoader
@@ -51,11 +50,18 @@ import com.google.android.gms.ads.AdListener
 import com.google.android.gms.ads.FullScreenContentCallback
 import com.google.android.gms.ads.rewarded.RewardedAd
 import com.google.android.gms.ads.rewarded.RewardedAdLoadCallback
+import com.google.android.gms.ads.AdError
 
 // firebase用
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
+
+// エッジツーエッジ用
+import androidx.core.view.WindowCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.updatePadding
 
 class MainActivity : AppCompatActivity(), OnMapReadyCallback {
 
@@ -156,8 +162,13 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // エッジツーエッジ表示を有効化
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main) // ← ここでレイアウトが読み込まれる
+        // topControls にインセットを適用
+        applyEdgeToEdgeInsets()
 
         // onCreate メソッド内で Context が利用可能になってから初期化
         nativeAdUnitId = getString(R.string.admob_native_id)
@@ -175,7 +186,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
                 ActivityCompat.requestPermissions(
                     this,
-                    arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
+                    REQUIRED_PERMISSIONS,
                     LOCATION_PERMISSION_REQUEST_CODE
                 )
             }
@@ -592,6 +603,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
         return id
     }
 
+    // 権限要求
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         Log.d("PermissionResult", "onRequestPermissionsResult called for requestCode: $requestCode")
@@ -609,6 +621,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
         }
     }
 
+    // 権限チェック
     private fun checkPermissionResults() {
         if (isLocationPermissionChecked) {
             if (!hasAllPermissions()) {
@@ -847,6 +860,34 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
             textView.text = "データ更新日: ${format.format(java.util.Date(last))}"
         }
     }
+
+    // エッジツーエッジ用
+    private fun applyEdgeToEdgeInsets() {
+        val buttonsToOffset = listOf(
+            R.id.location_info,
+            R.id.gps_overlay,
+            R.id.distance_overlay,
+            R.id.json_last_updated,
+            R.id.btn_update_json
+        )
+
+        val insetsTop = WindowInsetsCompat.Type.systemBars()
+
+        // Buttonなど → translationYで位置だけ調整（高さを変えない）
+        buttonsToOffset.forEach { id ->
+            findViewById<View>(id)?.let { view ->
+                ViewCompat.setOnApplyWindowInsetsListener(view) { v, insets ->
+                    val top = insets.getInsets(insetsTop).top
+                    v.translationY = top.toFloat()
+                    insets
+                }
+            }
+        }
+
+        // ステータスバー透過 & アイコン黒
+        window.statusBarColor = android.graphics.Color.TRANSPARENT
+        WindowCompat.getInsetsController(window, window.decorView)?.isAppearanceLightStatusBars = true
+    }
 }
 
 
@@ -1027,4 +1068,9 @@ fun drawSector(center: LatLng, bearing: Double, radiusMeters: Double, angleDegre
     )
 }
 
+// エッジツーエッジ用
+fun Int.dpToPx(context: Context): Int {
+    val density = context.resources.displayMetrics.density
+    return (this * density).toInt()
+}
 

@@ -24,7 +24,7 @@
 
 ## 4. お問い合わせ
 
-orbisalert.app@gmail.com
+ykun.utilities@gmail.com
 
 ## 5. 改定
 

@@ -31,14 +31,14 @@ val keyPassword = localProps.getProperty("KEY_PASSWORD") ?: ""
 
 android {
     namespace = "com.ykun.orbisalert"
-    compileSdk = 34
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.ykun.orbisalert"
         minSdk = 29
-        targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        targetSdk = 36
+        versionCode = 7
+        versionName = "1.0.7"
 
         // Java 8以上のAPIを使用する場合に必要（マルチDEX対応）
         multiDexEnabled = true
@@ -64,7 +64,7 @@ android {
 
     buildTypes {
         getByName("release") {
-            isMinifyEnabled = false // 難読化や圧縮はまだ使用しない
+            isMinifyEnabled = true // 難読化
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
