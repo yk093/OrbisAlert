@@ -38,10 +38,11 @@ class LocationService : Service() {
 
     private lateinit var orbisArray: JSONArray
 
-    private val notifyThresholds = listOf(2000, 1000, 500)
-    private val clearDistance = 50
+    private val notifyThresholds = listOf(2100, 1100, 600) // 音声のトリガーは早めに出す
     private val notifiedDistanceMap = mutableSetOf<String>()
     private var isAlarmActive = false
+    private val clearDistance = 100
+
     // オービス接近追跡用の状態変数
     private var lastDistanceToOrbis = Double.MAX_VALUE
     private var wasApproachingOrbis = false
@@ -223,37 +224,36 @@ class LocationService : Service() {
                 val systemType = obj.optInt("intSystemType", 0)
                 val isMobileOrbis = systemType in listOf(5, 6, 7)
 
-                if (isMobileOrbis) {
-                    // 移動式オービス：方向条件なし、2km以内なら対象
-                    if (dist < 2000.0 && dist < closestMobileDistance) {
-                        closestMobileObj = obj
+                // 方向条件のチェック
+                val oangle = obj.optInt("intDirection", 0)
+                val directionDiff = abs(angleDifference(bearing, oangle.toDouble()))
+
+                val angleToOrbis = calculateBearing(lat, lng, olat, olng)
+                val angleDiffToOrbis = angleDifference(bearing, angleToOrbis)
+
+                Log.d("DEBUG_COND", "obj:${obj.getInt("intOrbisKey")}")
+                Log.d("DEBUG_COND", "進行方向とオービスの方向の差：$directionDiff")
+                Log.d("DEBUG_COND", "進行方向から見たオービスの位置：$angleDiffToOrbis")
+
+                val meetsDirectionCriteria = directionDiff in 150.0..210.0 &&
+                        angleDiffToOrbis <= 30.0
+
+                Log.d("DEBUG_COND", "方向条件通過：$meetsDirectionCriteria")
+
+                val maxThreshold = notifyThresholds.maxOrNull() ?: 2100  // デフォルト値2100
+
+                // 距離条件のチェック
+                if (
+                    speed >= 30.0 &&        // 最低速度
+                    accuracy < 25.0 &&      // GPS精度良好
+                    meetsDirectionCriteria &&
+                    dist < maxThreshold     // 2km以内
+                ) {
+                    if (isMobileOrbis && dist < closestMobileDistance) {
+                        closestMobileObj = obj      // 最も近い移動式オービス
                         closestMobileDistance = dist
-                    }
-                } else {
-                    // 固定式オービス：方向条件を満たすかチェック
-                    val oangle = obj.optInt("intDirection", 0)
-                    val directionDiff = abs(angleDifference(bearing, oangle.toDouble()))
-
-                    val angleToOrbis = calculateBearing(lat, lng, olat, olng)
-                    val angleDiffToOrbis = angleDifference(bearing, angleToOrbis)
-
-                    Log.d("DEBUG_COND", "obj:${obj.getInt("intOrbisKey")}")
-                    Log.d("DEBUG_COND", "進行方向とオービスの方向の差：$directionDiff")
-                    Log.d("DEBUG_COND", "進行方向から見たオービスの位置：$angleDiffToOrbis")
-
-                    val meetsDirectionCriteria = directionDiff in 150.0..210.0 &&
-                            angleDiffToOrbis <= 30.0
-
-                    Log.d("DEBUG_COND", "方向条件通過：$meetsDirectionCriteria")
-
-
-                    if (
-                        speed >= 30.0 &&       // 最低速度
-                        accuracy < 25.0 &&     // GPS精度良好
-                        meetsDirectionCriteria &&
-                        dist < closestFixedDistance
-                    ) {
-                        closestFixedObj = obj
+                    } else if (!isMobileOrbis && dist < closestFixedDistance) {
+                        closestFixedObj = obj       // 最も近い固定式オービス
                         closestFixedDistance = dist
                     }
                 }
@@ -271,8 +271,17 @@ class LocationService : Service() {
     private fun processOrbisProximity(closestObj: JSONObject?, lat: Double, lng: Double, speed: Double, accuracy: Float, bearing: Double) {
         var minDistance = -1.0  // ← 距離の初期化（見つからない場合は -1.0）
 
-        // オービスが見つからなくても以前の対象があれば使用する
-        val obj = closestObj ?: previousOrbisObj
+        // closestObjがnullでも、条件を満たすときはpreviousOrbisObjを使用
+        val usePreviousObj = previousOrbisObj != null &&
+                wasApproachingOrbis &&
+                isAlarmActive
+
+        Log.d("DEBUG_COND_PASSED", "${usePreviousObj}")
+
+        val obj = closestObj ?: if (usePreviousObj) {
+            Log.d("DEBUG_COND_PASSED", "⚠ closestObjなし → previousOrbisObj(${previousOrbisObj?.getInt("intOrbisKey")}) を一時的に継続使用")
+            previousOrbisObj
+        } else null
 
         if (obj != null) {
             Log.d("DEBUG_COND", "closestobj:${obj.getInt("intOrbisKey")}")
@@ -303,26 +312,25 @@ class LocationService : Service() {
             // 通過判定：一度接近 → 離れ始め → 50m超え → 通過通知 （移動式はスキップ）
             val passedKey = "${keyBase}_passed"
             val alreadyPassed = notifiedDistanceMap.contains(passedKey)
-            Log.d("DEBUG_COND", """
+            Log.d("DEBUG_COND_PASSED", """
                         isMobileOrbis: $isMobileOrbis
                         isAlarmActive: $isAlarmActive
                         wasApproachingOrbis: $wasApproachingOrbis
                         isApproaching: $isApproaching
                         minDistance: $minDistance
-                        clearDistance: $clearDistance
                         alreadyPassed: $alreadyPassed
                     """.trimIndent())
 
-            if (!isMobileOrbis && isAlarmActive && wasApproachingOrbis && !isApproaching &&
-                minDistance > clearDistance && !alreadyPassed) {
-                Log.d("OrbisAlert", "通過判定（${minDistance}m）")
+            if (isAlarmActive && wasApproachingOrbis && !isApproaching &&
+                minDistance < 0 && !alreadyPassed) {
+                Log.d("DEBUG_COND_PASSED", "通過判定（${minDistance}m）")
                 notifiedDistanceMap.add(passedKey)
                 stopAlert()
                 stopVibration()
                 isAlarmActive = false
                 wasApproachingOrbis = false
                 previousOrbisObj = null
-                playAlert("alert_passed.mp3")
+                playAlert(if (isMobileOrbis) "alert_passed_move.mp3" else "alert_passed.mp3")
                 return
             }
 
@@ -330,41 +338,40 @@ class LocationService : Service() {
             for (threshold in notifyThresholds) {
                 val notifyKey = "${keyBase}_${threshold}"
                 if (minDistance < threshold && !notifiedDistanceMap.contains(notifyKey)) {
-                    // 移動式は 500m 通知スキップ
-                    if (isMobileOrbis && threshold == 500) continue
-
                     notifiedDistanceMap.add(notifyKey)
                     // intRoadType に応じて alert_ippan.mp3 または alert_kosoku.mp3 を先に再生
                     val roadType = obj.optInt("intRoadType", 1) // 1=一般道, 2=高速
                     val categoryAlert = if (roadType == 1) "alert_ippan.mp3" else "alert_kosoku.mp3"
                     val suffix = if (isMobileOrbis) "_move" else ""
-                    if (threshold == notifyThresholds.min()) {
-                        playAlert(categoryAlert) {
-                            playAlert("alert_${threshold}m$suffix.mp3") {
-                                // 再生完了後にアラームを開始
-                                if (!isAlarmActive && !alreadyPassed) {
-                                    Log.d("OrbisAlert", "アラーム開始 (${threshold}m完了後)")
-                                    playAlert("alert_alarm.mp3")
-                                    startVibration()
-                                    isAlarmActive = true
 
-                                    // タイマーで一定時間後に自動停止
-                                    alarmTimeoutJob?.cancel()  // 既存があればキャンセル
-                                    alarmTimeoutJob = CoroutineScope(Dispatchers.Default).launch {
-                                        delay(30_000L)  // 30秒（ミリ秒単位）
-                                        withContext(Dispatchers.Main) {
-                                            Log.d("OrbisAlert", "アラーム自動停止（30秒経過）")
-                                            stopAlert()
-                                            stopVibration()
-                                            isAlarmActive = false
-                                        }
+                    // 1000m or 500m のときは alert_alarm.mp3 ループ再生へ移行
+                    if (threshold == notifyThresholds.getOrNull(1) || threshold == notifyThresholds.getOrNull(2)) {
+                        stopAlert() // ループ再生中であれば明示停止
+                        playAlert(categoryAlert) {
+                            playAlert("alert_${(threshold - 100)}m$suffix.mp3") { // 100m早めに音声を再生するため-100m
+                                // 再生完了後にアラームを開始
+                                Log.d("DEBUG_ALERT", "アラーム開始 (${threshold}m完了後)")
+                                playAlert("alert_alarm.mp3", loop = true)
+                                startVibration()
+                                isAlarmActive = true
+
+                                // タイマーで一定時間後に自動停止
+                                alarmTimeoutJob?.cancel()  // 既存があればキャンセル
+                                alarmTimeoutJob = CoroutineScope(Dispatchers.Default).launch {
+                                    delay(30_000L)  // 30秒（ミリ秒単位）
+                                    withContext(Dispatchers.Main) {
+                                        Log.d("DEBUG_ALERT", "アラーム自動停止（30秒経過）")
+                                        stopAlert()
+                                        stopVibration()
+                                        isAlarmActive = false
                                     }
                                 }
                             }
                         }
                     } else {
+                        // 2000mなど通常の通知（alert_alarm なし）
                         playAlert(categoryAlert) {
-                            playAlert("alert_${threshold}m$suffix.mp3")
+                            playAlert("alert_${(threshold - 100)}m$suffix.mp3") // 100m早めに音声を再生するため-100m
                         }
                     }
                     break
@@ -400,7 +407,7 @@ class LocationService : Service() {
                 val oLat = latLng[0].toDoubleOrNull() ?: return@removeIf false
                 val oLng = latLng[1].toDoubleOrNull() ?: return@removeIf false
                 val dist = distanceInMeters(lat, lng, oLat, oLng)
-                dist > clearDistance * 2
+                dist > clearDistance
             }
         }
 
@@ -423,27 +430,29 @@ class LocationService : Service() {
     }
 
     // 警告音の再生
-    private fun playAlert(fileName: String, onComplete: (() -> Unit)? = null) {
+    private fun playAlert(fileName: String, loop: Boolean = false, onComplete: (() -> Unit)? = null) {
         stopAlert()
         try {
-            requestAudioFocus()  // オーディオフォーカス取得
+            requestAudioFocus()
 
             val afd = assets.openFd(fileName)
             val player = MediaPlayer()
             player.setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)
-            player.isLooping = fileName == "alert_alarm.mp3"
+            player.isLooping = loop
             player.prepare()
             player.start()
+
             if (onComplete != null) {
                 player.setOnCompletionListener {
-                    abandonAudioFocus() // 再生後にフォーカス返す
+                    abandonAudioFocus()
                     onComplete()
                 }
             } else {
                 player.setOnCompletionListener {
-                    abandonAudioFocus() // 通常再生後も返す
+                    abandonAudioFocus()
                 }
             }
+
             alarmPlayer = player
         } catch (e: Exception) {
             Log.e("Sound", "再生失敗: $fileName", e)
@@ -476,7 +485,6 @@ class LocationService : Service() {
         // フォーカスを明示的に返す
         abandonAudioFocus()
     }
-
 
     // バイブレーション開始
     private fun startVibration() {

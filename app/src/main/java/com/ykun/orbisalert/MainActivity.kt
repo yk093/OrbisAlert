@@ -226,9 +226,10 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
         // jsonファイルの更新ボタン
         findViewById<Button>(R.id.btn_update_json).setOnClickListener {
             Log.d("reward", "ボタンが押された")
-            showRewardAd {
-                downloadOrbisJson()
-            }
+            showRewardAd(
+                onRewardEarned = { downloadOrbisJson() },
+                onFallback = { downloadOrbisJson() }  // 広告失敗でも実行
+            )
         }
 
         // TextView を取得
@@ -429,7 +430,6 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
         // 初期カメラ位置を日本の地理的中心に設定
         val japanCenter = LatLng(36.2048, 138.2529)
         val initialZoom = 4.5f // 日本全体を表示
-        map.moveCamera(CameraUpdateFactory.newLatLngZoom(japanCenter, initialZoom))
         map.moveCamera(CameraUpdateFactory.newLatLngZoom(japanCenter, initialZoom))
 
         // 進行方向マーカー（arrow_icon.png を res/drawable に配置）
@@ -767,39 +767,35 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
     }
 
     // 広告表示＆報酬検知
-    fun showRewardAd(onRewardEarned: () -> Unit) {
-        val ad = rewardedAd
-        if (ad != null) {
-            ad.fullScreenContentCallback = object : FullScreenContentCallback() {
+    private fun showRewardAd(onRewardEarned: () -> Unit, onFallback: (() -> Unit)? = null) {
+        if (rewardedAd != null) {
+            rewardedAd?.fullScreenContentCallback = object : FullScreenContentCallback() {
                 override fun onAdDismissedFullScreenContent() {
-                    Log.d("AdMob", "広告が閉じられたので再読み込みを行う")
-                    rewardedAd = null
-                    loadRewardAd() // ← 再読み込み
-                }
-
-                override fun onAdFailedToShowFullScreenContent(adError: AdError) {
-                    Log.e("AdMob", "広告表示失敗: ${adError.message}")
+                    Log.d("AdShow", "広告が閉じられました")
                     rewardedAd = null
                     loadRewardAd()
                 }
 
-                override fun onAdShowedFullScreenContent() {
-                    Log.d("AdMob", "広告が表示されました")
+                override fun onAdFailedToShowFullScreenContent(adError: AdError) {
+                    Log.e("AdShow", "広告の表示に失敗しました: ${adError.message}")
+                    rewardedAd = null
+                    loadRewardAd()
+                    onFallback?.invoke() // ← 表示失敗時にも fallback 実行
                 }
             }
 
-            // rewardItem を取得してログに出力
-            ad.show(this) { rewardItem ->
+            rewardedAd?.show(this) { rewardItem ->
                 val amount = rewardItem.amount
                 val type = rewardItem.type
-                Log.d("AdMob", "リワード獲得！ amount=$amount, type=$type")
+                Log.d("AdMob", "リワード獲得 amount=$amount, type=$type")
 
                 // 実際の報酬処理
                 onRewardEarned()
             }
         } else {
-            Toast.makeText(this, "広告がまだ読み込まれていません", Toast.LENGTH_SHORT).show()
-            loadRewardAd() // ← ★ 念のためここでも再読み込み
+            // Toast.makeText(this, "広告がまだ読み込まれていません", Toast.LENGTH_SHORT).show()
+            loadRewardAd()
+            onFallback?.invoke()
         }
     }
 
@@ -1066,11 +1062,5 @@ fun drawSector(center: LatLng, bearing: Double, radiusMeters: Double, angleDegre
             .strokeColor(0xFFFF0000.toInt())
             .strokeWidth(2f)
     )
-}
-
-// エッジツーエッジ用
-fun Int.dpToPx(context: Context): Int {
-    val density = context.resources.displayMetrics.density
-    return (this * density).toInt()
 }
 

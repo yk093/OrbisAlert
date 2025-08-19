@@ -37,8 +37,8 @@ android {
         applicationId = "com.ykun.orbisalert"
         minSdk = 29
         targetSdk = 36
-        versionCode = 7
-        versionName = "1.0.7"
+        versionCode = 12
+        versionName = "1.1.11"
 
         // Java 8以上のAPIを使用する場合に必要（マルチDEX対応）
         multiDexEnabled = true
